@@ -1,8 +1,5 @@
+import React from 'react';
 import { Camera, Aperture, Hash } from 'lucide-react';
-import React, { useCallback } from 'react'; // 确保引入了 useCallback
-import Particles from "react-tsparticles"; // 引入粒子组件
-import { loadSlim } from "tsparticles-slim"; // 引入轻量引擎
-import goldParticlesConfig from './particlesConfig'; // 引入刚才的配置文件
 
 // ==========================================
 // 🔧 你的照片数据 (请根据实际文件名修改)
@@ -40,30 +37,12 @@ const PHOTO_DATA = [
 // ==========================================
 
 const CyberGallery = () => {
-// 👇 新增：初始化粒子引擎的方法
-  const particlesInit = useCallback(async engine => {
-    await loadSlim(engine);
-  }, []);
-
  return (
-<div className="min-h-screen bg-zinc-50 text-zinc-900 p-4 md:p-8 font-mono selection:bg-pink-500 selection:text-white relative overflow-hidden">
+    // 1. 背景改为浅灰 bg-zinc-50，文字改为深色 text-zinc-900
+    <div className="min-h-screen bg-zinc-50 text-zinc-900 p-4 md:p-8 font-mono selection:bg-pink-500 selection:text-white">
       
-      {/* === 动态背景层开始 (新版：金色流麻) === */}
-      
-      {/* 1. 粒子特效组件 (核心) */}
-      <Particles
-        id="tsparticles"
-        init={particlesInit}
-        options={goldParticlesConfig}
-        className="absolute inset-0 z-0 pointer-events-none" // 确保它在最底层且不挡鼠标
-      />
-
-      {/* 2. 基础网格 (保留，增加科技感，叠加在粒子之上) */}
-      <div className="fixed inset-0 bg-[linear-gradient(rgba(0,0,0,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.1)_1px,transparent_1px)] bg-[size:50px_50px] pointer-events-none z-0" />
-      
-      {/* === 动态背景层结束 === */}
-
-      {/* 标题 (Header) ... 接你原来的代码 */}
+      {/* 2. 背景网格改为深色线条 */}
+      <div className="fixed inset-0 bg-[linear-gradient(rgba(0,0,0,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.05)_1px,transparent_1px)] bg-[size:50px_50px] pointer-events-none z-0" />
 
       {/* 标题 */}
       <header className="relative z-10 mb-16 text-center">
@@ -73,7 +52,7 @@ const CyberGallery = () => {
         </div>
         {/* 标题改为深色渐变 */}
         <h1 className="text-5xl md:text-7xl font-black italic text-transparent bg-clip-text bg-gradient-to-r from-zinc-900 via-zinc-700 to-zinc-500 tracking-tighter uppercase transform -skew-x-6 drop-shadow-sm">
-          YSRC-SZT GALLERY
+          YSRC GALLERY
         </h1>
       </header>
 
