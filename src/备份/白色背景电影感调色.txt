@@ -52,8 +52,6 @@ const CyberGallery = () => {
   }, []);
 
   // 滚动锁定 & 滚轮事件监听优化
-  // 注意：在 React 中直接用 onWheel 有时无法彻底阻止 passive event，
-  // 但配合 CSS overscroll-behavior 和 e.preventDefault 通常能解决问题
   useEffect(() => {
     if (selectedPhoto) {
       document.body.style.overflow = 'hidden';
@@ -65,7 +63,6 @@ const CyberGallery = () => {
 
   // 滚轮缩放
   const handleWheel = (e) => {
-    // 🔴 修复1: 阻止默认滚动行为，防止 Notion 页面跟着动
     e.preventDefault(); 
     e.stopPropagation(); 
     
@@ -100,10 +97,10 @@ const CyberGallery = () => {
     setPosition({ x: 0, y: 0 });
   };
 
-  // 🔴 修复2: 动态计算鼠标样式
+  // 动态计算鼠标样式
   const getCursorStyle = () => {
-    if (scale <= 1) return 'cursor-default'; // 未放大时普通指针
-    return isDragging ? 'cursor-grabbing' : 'cursor-grab'; // 放大后：抓取中 vs 可抓取
+    if (scale <= 1) return 'cursor-default';
+    return isDragging ? 'cursor-grabbing' : 'cursor-grab';
   };
 
   return (
@@ -133,7 +130,23 @@ const CyberGallery = () => {
             onClick={() => { setSelectedPhoto(photo); setScale(1); setPosition({ x: 0, y: 0 }); }}
           >
             <div className="relative overflow-hidden bg-white border border-zinc-200 hover:border-pink-500 transition-all duration-500 shadow-xl hover:shadow-[0_0_30px_rgba(236,72,153,0.15)]">
-              <img src={photo.src} alt={photo.title} className="w-full h-auto group-hover:scale-105 transition-all duration-700 ease-out" loading="lazy" />
+              
+              {/* 🎨 核心修改区域：电影感调色滤镜 
+                  grayscale: 默认黑白
+                  contrast-[1.1]: 加大对比度，让黑白更有质感
+                  brightness-[0.9]: 默认稍微压暗，制造神秘感
+                  group-hover: 全部恢复正常
+              */}
+              <img 
+                src={photo.src} 
+                alt={photo.title} 
+                className="w-full h-auto 
+                           grayscale contrast-[1.1] brightness-[0.9] 
+                           group-hover:grayscale-0 group-hover:contrast-100 group-hover:brightness-100 group-hover:scale-105 
+                           transition-all duration-700 ease-out" 
+                loading="lazy" 
+              />
+              
               <div className="absolute inset-0 bg-gradient-to-t from-white/90 via-white/0 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-6">
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white/80 p-3 rounded-full shadow-lg scale-0 group-hover:scale-100 transition-transform duration-300 delay-100 backdrop-blur-md">
                   <Maximize2 size={24} className="text-zinc-900" />
@@ -157,11 +170,9 @@ const CyberGallery = () => {
       {/* === 大图查看器 === */}
       {selectedPhoto && (
         <div 
-          // 🔴 修复3: 添加 overscroll-contain 防止滚动链传递给父级 Notion
           className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/95 backdrop-blur-md overflow-hidden animate-in fade-in duration-300 overscroll-contain"
           onClick={handleClose}
           onWheel={(e) => {
-              // 确保在背景上滚动也不会穿透
               e.preventDefault();
               e.stopPropagation();
           }} 
@@ -193,7 +204,6 @@ const CyberGallery = () => {
 
           {/* 图片交互层容器 */}
           <div 
-            // 🔴 修复4: 应用动态 cursor 样式，并移除旧的 cursor-move
             className={`relative w-full h-full flex items-center justify-center ${getCursorStyle()}`}
             onClick={(e) => e.stopPropagation()}
             onWheel={handleWheel}
