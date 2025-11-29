@@ -20,13 +20,19 @@ const PHOTO_DATA = [
     desc: 'YSRC-SZT全员集结' 
   },
  { 
-    id: 1, 
+    id: 3, 
     src: '/cyber-gallery/photos/3.jpg',  // 确保文件名对应
     title: 'MENBER INTRO 3', 
-    date: '2024.11.29, 
+    date: '2024.11.29', 
     desc: 'YSRC-SZT全员集结 ' 
   },
-
+ { 
+    id: 4, 
+    src: '/cyber-gallery/photos/0.jpg',  // 确保文件名对应
+    title: 'TRAINING CLIP', 
+    date: '2024.11.29', 
+    desc: 'YSRC-SZT Daily training ' 
+  },
 ];
 // ==========================================
 
@@ -44,7 +50,7 @@ const CyberGallery = () => {
           <span className="text-pink-500 text-xs tracking-[0.3em] font-bold">VISUAL_LOGS // 影像档案</span>
         </div>
         <h1 className="text-5xl md:text-7xl font-black italic text-transparent bg-clip-text bg-gradient-to-r from-white via-gray-200 to-gray-600 tracking-tighter uppercase transform -skew-x-6 drop-shadow-[0_0_20px_rgba(255,255,255,0.2)]">
-          YSRC GALLERY
+          YSRC-SZT GALLERY
         </h1>
       </header>
 
