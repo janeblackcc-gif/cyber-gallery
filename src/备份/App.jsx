@@ -19,14 +19,14 @@ const PHOTO_DATA = [
     id: 2, 
     src: '/cyber-gallery/photos/2.jpg', 
     title: 'MEMBER INTRO 2', 
-    date: '2024.11.29', 
+    date: '2025.11.29', 
     desc: 'YSRC-SZT全员集结' 
   },
   { 
     id: 3, 
     src: '/cyber-gallery/photos/3.jpg', 
     title: 'MEMBER INTRO 3', 
-    date: '2024.11.29', 
+    date: '2025.11.29', 
     desc: 'YSRC-SZT全员集结' 
   },
   { 
@@ -47,33 +47,52 @@ const CyberGallery = () => {
   const [isDragging, setIsDragging] = useState(false);
   const dragStart = useRef({ x: 0, y: 0 });
 
+  // ⚡️ 新增：用于彻底解决滚轮穿透的 Ref
+  const containerRef = useRef(null); 
+  const scaleRef = useRef(1); // 这是一个小技巧：用 Ref 追踪 scale，以便在原生监听器里能拿到最新值
+
+  // 同步 scale 到 ref
+  useEffect(() => {
+    scaleRef.current = scale;
+  }, [scale]);
+
   const particlesInit = useCallback(async engine => {
     await loadSlim(engine);
   }, []);
 
-  // 滚动锁定 & 滚轮事件监听优化
-  // 注意：在 React 中直接用 onWheel 有时无法彻底阻止 passive event，
-  // 但配合 CSS overscroll-behavior 和 e.preventDefault 通常能解决问题
+  // ⚡️ 核心修复：使用原生事件监听器 + passive: false
   useEffect(() => {
-    if (selectedPhoto) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-    return () => { document.body.style.overflow = 'unset'; };
-  }, [selectedPhoto]);
+    const container = containerRef.current;
+    if (!selectedPhoto || !container) return;
 
-  // 滚轮缩放
-  const handleWheel = (e) => {
-    // 🔴 修复1: 阻止默认滚动行为，防止 Notion 页面跟着动
-    e.preventDefault(); 
-    e.stopPropagation(); 
+    // 真正的滚轮处理逻辑（移到这里面）
+    const handleNativeWheel = (e) => {
+      e.preventDefault(); // 👈 只有在这里调用，配合 passive: false 才能100%阻止Notion滚动
+      e.stopPropagation();
+
+      const currentScale = scaleRef.current; // 从 Ref 获取最新值，而不是依赖闭包
+      const delta = e.deltaY > 0 ? -0.1 : 0.1;
+      const newScale = Math.min(Math.max(1, currentScale + delta), 5);
+      
+      setScale(newScale);
+      
+      // 如果缩放回 1，重置位置
+      if (newScale === 1) {
+        setPosition({ x: 0, y: 0 });
+      }
+    };
+
+    // 绑定事件，注意 passive: false
+    container.addEventListener('wheel', handleNativeWheel, { passive: false });
     
-    const delta = e.deltaY > 0 ? -0.1 : 0.1;
-    const newScale = Math.min(Math.max(1, scale + delta), 5);
-    setScale(newScale);
-    if (newScale === 1) setPosition({ x: 0, y: 0 });
-  };
+    // 锁定 body 滚动作为双重保险
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      container.removeEventListener('wheel', handleNativeWheel);
+      document.body.style.overflow = 'unset';
+    };
+  }, [selectedPhoto]); // 仅在打开/关闭图片时重新绑定
 
   // 拖拽逻辑
   const handleMouseDown = (e) => {
@@ -100,7 +119,7 @@ const CyberGallery = () => {
     setPosition({ x: 0, y: 0 });
   };
 
-  // 🔴 修复2: 动态计算鼠标样式
+  // 动态计算鼠标样式
   const getCursorStyle = () => {
     if (scale <= 1) return 'cursor-default'; // 未放大时普通指针
     return isDragging ? 'cursor-grabbing' : 'cursor-grab'; // 放大后：抓取中 vs 可抓取
@@ -157,14 +176,10 @@ const CyberGallery = () => {
       {/* === 大图查看器 === */}
       {selectedPhoto && (
         <div 
-          // 🔴 修复3: 添加 overscroll-contain 防止滚动链传递给父级 Notion
+          ref={containerRef} // ⚡️ 绑定 Ref 到这个最外层容器
           className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/95 backdrop-blur-md overflow-hidden animate-in fade-in duration-300 overscroll-contain"
           onClick={handleClose}
-          onWheel={(e) => {
-              // 确保在背景上滚动也不会穿透
-              e.preventDefault();
-              e.stopPropagation();
-          }} 
+          // 注意：这里移除了 React 的 onWheel，改用上面的 useEffect 原生绑定
         >
           {/* 背景战术网格 */}
           <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:100px_100px] pointer-events-none" />
@@ -193,10 +208,8 @@ const CyberGallery = () => {
 
           {/* 图片交互层容器 */}
           <div 
-            // 🔴 修复4: 应用动态 cursor 样式，并移除旧的 cursor-move
             className={`relative w-full h-full flex items-center justify-center ${getCursorStyle()}`}
             onClick={(e) => e.stopPropagation()}
-            onWheel={handleWheel}
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
