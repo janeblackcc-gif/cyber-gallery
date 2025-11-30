@@ -1,5 +1,5 @@
 import React, { useCallback, useState, useEffect, useRef } from 'react';
-import { Camera, Aperture, Hash, X, Maximize2, ZoomIn, Move, Scan, Loader2, UploadCloud } from 'lucide-react';
+import { Camera, Aperture, Hash, X, Maximize2, ZoomIn, Move, Scan, Loader2, UploadCloud, Database } from 'lucide-react'; // 👈 新增 Database 图标
 import Particles from "react-tsparticles";
 import { loadSlim } from "tsparticles-slim";
 import goldParticlesConfig from './particlesConfig';
@@ -11,8 +11,12 @@ import goldParticlesConfig from './particlesConfig';
 const SPREADSHEET_ID = '1hhEkazIsn69rFmMx6zlcMR9Xt1_AmtOIruZkViJzr-Y'; 
 const SHEET_NAME = 'Sheet1';
 
-// 🔴 2. 你的 Tally 表单链接
+// 🔴 2. Tally 上传链接
 const UPLOAD_LINK = 'https://tally.so/r/A7rWWk'; 
+
+// 🔴 3. Google Sheet 编辑链接 (这就是你的后台)
+// 点击这个按钮，直接跳转到表格去管理/删除数据
+const MANAGE_LINK = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/edit`;
 
 const CyberGallery = () => {
   // ... (状态管理代码保持不变) ...
@@ -101,15 +105,30 @@ const CyberGallery = () => {
       {/* 标题栏区域 */}
       <header className="relative z-10 mb-16 text-center">
         
-        <a 
-          href={UPLOAD_LINK} 
-          target="_blank" 
-          rel="noopener noreferrer"
-          className="absolute top-0 right-0 md:top-4 md:right-4 group flex items-center gap-2 px-4 py-2 bg-white/80 backdrop-blur border border-zinc-300 hover:border-pink-500 rounded-full transition-all duration-300 hover:shadow-[0_0_15px_rgba(236,72,153,0.3)] cursor-pointer no-underline z-50"
-        >
-          <UploadCloud size={16} className="text-zinc-400 group-hover:text-pink-500 transition-colors" />
-          <span className="text-[10px] font-bold tracking-widest text-zinc-500 group-hover:text-pink-600">UPLOAD</span>
-        </a>
+        {/* ⚡️ 右上角操作区：上传 + 管理 */}
+        <div className="absolute top-0 right-0 md:top-4 md:right-4 flex flex-col md:flex-row gap-3 z-50">
+           {/* 管理按钮 (删除/编辑) */}
+           <a 
+            href={MANAGE_LINK} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="group flex items-center gap-2 px-4 py-2 bg-zinc-900/10 backdrop-blur border border-zinc-300 hover:border-red-500 rounded-full transition-all duration-300 hover:bg-zinc-900 hover:shadow-[0_0_15px_rgba(239,68,68,0.3)] cursor-pointer no-underline"
+          >
+            <Database size={16} className="text-zinc-400 group-hover:text-red-500 transition-colors" />
+            <span className="text-[10px] font-bold tracking-widest text-zinc-500 group-hover:text-red-500">DATABASE</span>
+          </a>
+
+          {/* 上传按钮 */}
+          <a 
+            href={UPLOAD_LINK} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="group flex items-center gap-2 px-4 py-2 bg-white/80 backdrop-blur border border-zinc-300 hover:border-pink-500 rounded-full transition-all duration-300 hover:shadow-[0_0_15px_rgba(236,72,153,0.3)] cursor-pointer no-underline"
+          >
+            <UploadCloud size={16} className="text-zinc-400 group-hover:text-pink-500 transition-colors" />
+            <span className="text-[10px] font-bold tracking-widest text-zinc-500 group-hover:text-pink-600">UPLOAD</span>
+          </a>
+        </div>
 
         <div className="inline-flex items-center gap-2 border border-pink-500/30 bg-pink-500/10 px-4 py-1 rounded-full mb-6 backdrop-blur-sm">
           <div className={`w-2 h-2 bg-pink-600 rounded-full ${isLoading ? 'animate-ping' : 'animate-pulse'}`} />
@@ -137,7 +156,7 @@ const CyberGallery = () => {
               onClick={() => { setSelectedPhoto(photo); setScale(1); setPosition({ x: 0, y: 0 }); }}
             >
               <div className="relative overflow-hidden bg-white border border-zinc-200 hover:border-pink-500 transition-all duration-500 shadow-xl hover:shadow-[0_0_30px_rgba(236,72,153,0.15)]">
-                {/* 🎨 核心修改：移除了 grayscale contrast brightness 等滤镜类名 */}
+                {/* 正常彩色图片 */}
                 <img 
                   src={photo.src} 
                   alt={photo.title || 'Unknown Asset'} 
@@ -168,7 +187,7 @@ const CyberGallery = () => {
       
       <footer className="mt-24 text-center text-zinc-400 text-[10px] tracking-[0.5em] uppercase">End of Transmission</footer>
 
-      {/* ... (大图查看器部分完全保持不变) ... */}
+      {/* ... (大图查看器部分保持不变) ... */}
       {selectedPhoto && (
         <div 
           ref={containerRef}
