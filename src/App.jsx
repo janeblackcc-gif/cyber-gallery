@@ -1,5 +1,5 @@
 import React, { useCallback, useState, useEffect, useRef } from 'react';
-import { Camera, Aperture, Hash, X, Maximize2, ZoomIn, Move, Scan, Loader2, UploadCloud, Database } from 'lucide-react'; // 👈 新增 Database 图标
+import { Camera, Aperture, Hash, X, Maximize2, ZoomIn, Move, Scan, Loader2, UploadCloud, Database, Play } from 'lucide-react'; 
 import Particles from "react-tsparticles";
 import { loadSlim } from "tsparticles-slim";
 import goldParticlesConfig from './particlesConfig';
@@ -7,22 +7,68 @@ import goldParticlesConfig from './particlesConfig';
 // ==========================================
 // 🔧 配置区域
 // ==========================================
-// 🔴 1. Google Sheet ID
 const SPREADSHEET_ID = '1hhEkazIsn69rFmMx6zlcMR9Xt1_AmtOIruZkViJzr-Y'; 
 const SHEET_NAME = 'Sheet1';
-
-// 🔴 2. Tally 上传链接
 const UPLOAD_LINK = 'https://tally.so/r/A7rWWk'; 
-
-// 🔴 3. Google Sheet 编辑链接 (这就是你的后台)
-// 点击这个按钮，直接跳转到表格去管理/删除数据
 const MANAGE_LINK = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/edit`;
 
+// 🛠️ 辅助函数：判断是不是视频
+const isVideoFile = (url) => {
+  if (!url) return false;
+  const lowerUrl = url.toLowerCase();
+  // 简单判断后缀，Tally 的链接通常包含文件扩展名
+  return lowerUrl.includes('.mp4') || lowerUrl.includes('.mov') || lowerUrl.includes('.webm');
+};
+
+// 🎨 独立组件：智能媒体显示 (自动处理图片/视频/横竖屏)
+const MediaItem = ({ src, alt, className, isHovered }) => {
+  const isVideo = isVideoFile(src);
+
+  if (isVideo) {
+    return (
+      <div className="relative w-full h-full">
+        <video
+          src={src}
+          className={`${className} object-cover`} // 列表页强制裁切填满
+          muted
+          loop
+          playsInline // 手机端必须加这个才能自动播放
+          autoPlay={isHovered} // 只有鼠标悬停时才播放，节省性能（可选，也可设为 true 一直播放）
+          ref={e => {
+            if (e) {
+              // 确保加载时是暂停的，hover时播放，或者直接设为 autoPlay={true} 让它一直动
+              isHovered ? e.play().catch(()=>{}) : e.pause();
+              // 如果想让它一直动，就把上面这行删了，直接写 <video autoPlay ... >
+            }
+          }}
+        />
+        {/* 视频角标提示 */}
+        {!isHovered && (
+          <div className="absolute top-2 right-2 bg-black/50 p-1 rounded-full backdrop-blur-sm">
+             <Play size={12} className="text-white fill-white" />
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // 普通图片
+  return (
+    <img 
+      src={src} 
+      alt={alt} 
+      className={className} // 接受外部传入的 object-cover
+      loading="lazy" 
+    />
+  );
+};
+
 const CyberGallery = () => {
-  // ... (状态管理代码保持不变) ...
   const [photoData, setPhotoData] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedPhoto, setSelectedPhoto] = useState(null);
+  
+  // 状态管理
   const [scale, setScale] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
@@ -30,15 +76,10 @@ const CyberGallery = () => {
   const containerRef = useRef(null); 
   const scaleRef = useRef(1);
 
-  // ... (useEffect 和 scaleRef 同步逻辑保持不变) ...
-  useEffect(() => {
-    scaleRef.current = scale;
-  }, [scale]);
+  useEffect(() => { scaleRef.current = scale; }, [scale]);
+  const particlesInit = useCallback(async engine => { await loadSlim(engine); }, []);
 
-  const particlesInit = useCallback(async engine => {
-    await loadSlim(engine);
-  }, []);
-
+  // 获取数据
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -54,27 +95,22 @@ const CyberGallery = () => {
         }));
 
         const validData = mappedData.filter(item => item.src && item.src.trim() !== '');
-        
-        if (validData.length > 0) {
-          setPhotoData(validData);
-        }
+        if (validData.length > 0) setPhotoData(validData);
       } catch (error) {
         console.error("数据连接失败:", error);
       } finally {
         setIsLoading(false);
       }
     };
-
     fetchData();
   }, []);
 
-  // ... (滚轮修复 handleNativeWheel 逻辑保持不变) ...
+  // 滚轮修复
   useEffect(() => {
     const container = containerRef.current;
     if (!selectedPhoto || !container) return;
     const handleNativeWheel = (e) => {
-      e.preventDefault(); 
-      e.stopPropagation();
+      e.preventDefault(); e.stopPropagation();
       const currentScale = scaleRef.current; 
       const delta = e.deltaY > 0 ? -0.1 : 0.1;
       const newScale = Math.min(Math.max(1, currentScale + delta), 5);
@@ -89,7 +125,7 @@ const CyberGallery = () => {
     };
   }, [selectedPhoto]);
 
-  // ... (拖拽和关闭逻辑保持不变) ...
+  // 交互逻辑
   const handleMouseDown = (e) => { if (scale > 1) { e.preventDefault(); setIsDragging(true); dragStart.current = { x: e.clientX - position.x, y: e.clientY - position.y }; } };
   const handleMouseMove = (e) => { if (isDragging && scale > 1) { e.preventDefault(); setPosition({ x: e.clientX - dragStart.current.x, y: e.clientY - dragStart.current.y }); } };
   const handleMouseUp = () => setIsDragging(false);
@@ -102,29 +138,16 @@ const CyberGallery = () => {
       <Particles id="tsparticles" init={particlesInit} options={goldParticlesConfig} className="absolute inset-0 z-0 pointer-events-none" />
       <div className="fixed inset-0 bg-[linear-gradient(rgba(0,0,0,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.1)_1px,transparent_1px)] bg-[size:50px_50px] pointer-events-none z-0" />
       
-      {/* 标题栏区域 */}
       <header className="relative z-10 mb-16 text-center">
-        
-        {/* ⚡️ 右上角操作区：上传 + 管理 */}
+        {/* 操作区 */}
         <div className="absolute top-0 right-0 md:top-4 md:right-4 flex flex-col md:flex-row gap-3 z-50">
-           {/* 管理按钮 (删除/编辑) */}
-           <a 
-            href={MANAGE_LINK} 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="group flex items-center gap-2 px-4 py-2 bg-zinc-900/10 backdrop-blur border border-zinc-300 hover:border-red-500 rounded-full transition-all duration-300 hover:bg-zinc-900 hover:shadow-[0_0_15px_rgba(239,68,68,0.3)] cursor-pointer no-underline"
-          >
+           <a href={MANAGE_LINK} target="_blank" rel="noopener noreferrer"
+            className="group flex items-center gap-2 px-4 py-2 bg-zinc-900/10 backdrop-blur border border-zinc-300 hover:border-red-500 rounded-full transition-all duration-300 hover:bg-zinc-900 hover:shadow-[0_0_15px_rgba(239,68,68,0.3)] cursor-pointer no-underline">
             <Database size={16} className="text-zinc-400 group-hover:text-red-500 transition-colors" />
             <span className="text-[10px] font-bold tracking-widest text-zinc-500 group-hover:text-red-500">DATABASE</span>
           </a>
-
-          {/* 上传按钮 */}
-          <a 
-            href={UPLOAD_LINK} 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="group flex items-center gap-2 px-4 py-2 bg-white/80 backdrop-blur border border-zinc-300 hover:border-pink-500 rounded-full transition-all duration-300 hover:shadow-[0_0_15px_rgba(236,72,153,0.3)] cursor-pointer no-underline"
-          >
+          <a href={UPLOAD_LINK} target="_blank" rel="noopener noreferrer"
+            className="group flex items-center gap-2 px-4 py-2 bg-white/80 backdrop-blur border border-zinc-300 hover:border-pink-500 rounded-full transition-all duration-300 hover:shadow-[0_0_15px_rgba(236,72,153,0.3)] cursor-pointer no-underline">
             <UploadCloud size={16} className="text-zinc-400 group-hover:text-pink-500 transition-colors" />
             <span className="text-[10px] font-bold tracking-widest text-zinc-500 group-hover:text-pink-600">UPLOAD</span>
           </a>
@@ -141,7 +164,7 @@ const CyberGallery = () => {
         </h1>
       </header>
 
-      {/* ... (中间列表渲染部分) ... */}
+      {/* 列表渲染 */}
       {isLoading ? (
         <div className="relative z-10 flex flex-col items-center justify-center h-64 gap-4 text-zinc-400">
           <Loader2 className="animate-spin text-pink-500" size={48} />
@@ -155,18 +178,18 @@ const CyberGallery = () => {
               className="group relative cursor-pointer"
               onClick={() => { setSelectedPhoto(photo); setScale(1); setPosition({ x: 0, y: 0 }); }}
             >
-              <div className="relative overflow-hidden bg-white border border-zinc-200 hover:border-pink-500 transition-all duration-500 shadow-xl hover:shadow-[0_0_30px_rgba(236,72,153,0.15)]">
-                {/* 正常彩色图片 */}
-                <img 
+              <div className="relative overflow-hidden bg-white border border-zinc-200 hover:border-pink-500 transition-all duration-500 shadow-xl hover:shadow-[0_0_30px_rgba(236,72,153,0.15)] aspect-[2/3]"> 
+                {/* aspect-[3/4] 强制竖向卡片比例，保证排版整齐 */}
+                
+                {/* ⚡️ 使用 MediaItem 组件，支持视频和图片 */}
+                <MediaItem 
                   src={photo.src} 
-                  alt={photo.title || 'Unknown Asset'} 
-                  className="w-full h-auto 
-                             group-hover:scale-105 
-                             transition-all duration-700 ease-out" 
-                  loading="lazy" 
+                  alt={photo.title}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-all duration-700 ease-out"
+                  isHovered={true} // 列表页让视频自动播放，产生LivePhoto效果
                 />
                 
-                <div className="absolute inset-0 bg-gradient-to-t from-white/90 via-white/0 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-6">
+                <div className="absolute inset-0 bg-gradient-to-t from-white/90 via-white/0 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-6 pointer-events-none">
                   <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white/80 p-3 rounded-full shadow-lg scale-0 group-hover:scale-100 transition-transform duration-300 delay-100 backdrop-blur-md">
                     <Maximize2 size={24} className="text-zinc-900" />
                   </div>
@@ -175,8 +198,8 @@ const CyberGallery = () => {
                       <Hash size={12} />
                       <span className="text-[10px] tracking-[0.2em]">{photo.date}</span>
                     </div>
-                    <h3 className="text-zinc-900 font-bold text-xl tracking-wide font-sans italic uppercase mb-1">{photo.title || 'UNNAMED'}</h3>
-                    <p className="text-zinc-500 text-xs font-mono">{photo.desc || 'No description available'}</p>
+                    <h3 className="text-zinc-900 font-bold text-xl tracking-wide font-sans italic uppercase mb-1">{photo.title}</h3>
+                    <p className="text-zinc-500 text-xs font-mono">{photo.desc}</p>
                   </div>
                 </div>
               </div>
@@ -187,17 +210,15 @@ const CyberGallery = () => {
       
       <footer className="mt-24 text-center text-zinc-400 text-[10px] tracking-[0.5em] uppercase">End of Transmission</footer>
 
-      {/* ... (大图查看器部分保持不变) ... */}
+      {/* 大图查看器 */}
       {selectedPhoto && (
         <div 
           ref={containerRef}
           className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/95 backdrop-blur-md overflow-hidden animate-in fade-in duration-300 overscroll-contain"
           onClick={handleClose}
         >
-          {/* 背景战术网格 */}
           <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:100px_100px] pointer-events-none" />
 
-          {/* 顶部操作区 */}
           <button className="absolute top-6 right-6 text-zinc-400 hover:text-white transition-colors z-50 p-2 bg-black/20 rounded-full cursor-pointer hover:bg-pink-500 hover:rotate-90 duration-300">
             <X size={32} />
           </button>
@@ -219,7 +240,6 @@ const CyberGallery = () => {
             )}
           </div>
 
-          {/* 图片交互层容器 */}
           <div 
             className={`relative w-full h-full flex items-center justify-center ${getCursorStyle()}`}
             onClick={(e) => e.stopPropagation()}
@@ -235,12 +255,24 @@ const CyberGallery = () => {
                 transition: isDragging ? 'none' : 'transform 0.1s ease-out'
               }}
             >
-              <img 
-                src={selectedPhoto.src} 
-                alt={selectedPhoto.title}
-                className="max-h-[80vh] max-w-[90vw] object-contain shadow-2xl border border-white/10 rounded-sm select-none animate-tactical-zoom will-change-transform"
-                draggable="false" 
-              />
+              {/* ⚡️ 大图模式下处理视频 */}
+              {isVideoFile(selectedPhoto.src) ? (
+                 <video
+                   src={selectedPhoto.src}
+                   className="max-h-[80vh] max-w-[90vw] object-contain shadow-2xl border border-white/10 rounded-sm select-none animate-tactical-zoom will-change-transform"
+                   autoPlay
+                   loop
+                   controls // 大图模式下显示播放条
+                   playsInline
+                 />
+              ) : (
+                <img 
+                  src={selectedPhoto.src} 
+                  alt={selectedPhoto.title}
+                  className="max-h-[80vh] max-w-[90vw] object-contain shadow-2xl border border-white/10 rounded-sm select-none animate-tactical-zoom will-change-transform"
+                  draggable="false" 
+                />
+              )}
 
               {scale === 1 && (
                 <>
@@ -253,16 +285,15 @@ const CyberGallery = () => {
             </div>
           </div>
 
-          {/* 底部信息 */}
           {scale === 1 && (
             <div className="absolute bottom-10 left-0 right-0 text-center pointer-events-none animate-in slide-in-from-bottom-8 duration-500 fade-in">
               <h2 className="text-white text-2xl font-black italic tracking-tighter uppercase drop-shadow-[0_0_10px_rgba(255,255,255,0.5)]">
-                {selectedPhoto.title || 'UNNAMED ASSET'}
+                {selectedPhoto.title}
               </h2>
               <div className="flex items-center justify-center gap-4 mt-2 text-zinc-400 text-xs tracking-widest font-mono">
                 <span className="text-pink-500">{selectedPhoto.date}</span>
                 <span className="text-zinc-600">/</span>
-                <span>{selectedPhoto.desc || 'No additional data'}</span>
+                <span>{selectedPhoto.desc}</span>
               </div>
               <div className="w-64 h-1 bg-zinc-800 mx-auto mt-4 rounded-full overflow-hidden">
                 <div className="h-full bg-pink-500 w-full animate-progress" style={{width: '0%'}} />
