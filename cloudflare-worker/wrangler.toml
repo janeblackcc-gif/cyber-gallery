@@ -1,0 +1,17 @@
+name = "cyber-gallery-upload"
+main = "worker.js"
+compatibility_date = "2024-11-01"
+
+[vars]
+SPREADSHEET_ID = "1hhEkazIsn69rFmMx6zlcMR9Xt1_AmtOIruZkViJzr-Y"
+SHEET_NAME = "Sheet1"
+PUBLIC_R2_BASE_URL = "https://pub-4f0c7025105e497690d5e4758e8c807e.r2.dev"
+R2_ACCOUNT_ID = "1c2797ea3f7aa0a96d1611482661b31b"
+R2_BUCKET_NAME = "cyber-gallery-uploads"
+PRESIGN_EXPIRES = "900"
+MAX_UPLOAD_BYTES = "1073741824"
+CORS_ORIGIN = "*"
+
+[[r2_buckets]]
+binding = "R2_BUCKET"
+bucket_name = "cyber-gallery-uploads"

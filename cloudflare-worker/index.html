@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cyber Gallery 上传</title>
+    <style>
+      :root {
+        color-scheme: light;
+      }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        margin: 0;
+        padding: 32px;
+        background: #fafaf9;
+        color: #292524;
+      }
+      .card {
+        max-width: 720px;
+        margin: 0 auto;
+        background: #fff;
+        border-radius: 12px;
+        padding: 32px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+      }
+      h1 {
+        margin: 0 0 24px;
+        font-size: 28px;
+        font-weight: 600;
+        color: #1c1917;
+      }
+      label {
+        display: block;
+        font-size: 14px;
+        font-weight: 500;
+        margin: 16px 0 8px;
+        color: #57534e;
+      }
+      input[type="text"],
+      input[type="date"],
+      textarea {
+        width: 100%;
+        padding: 12px 14px;
+        border: 1px solid #d6d3d1;
+        border-radius: 8px;
+        font-size: 14px;
+        box-sizing: border-box;
+        transition: border-color 0.2s;
+      }
+      input[type="text"]:focus,
+      input[type="date"]:focus,
+      textarea:focus {
+        outline: none;
+        border-color: #78716c;
+      }
+      textarea {
+        min-height: 100px;
+        resize: vertical;
+        font-family: inherit;
+      }
+      input[type="file"] {
+        display: block;
+        width: 100%;
+        padding: 12px;
+        border: 2px dashed #d6d3d1;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: border-color 0.2s;
+      }
+      input[type="file"]:hover {
+        border-color: #a8a29e;
+      }
+      .preview {
+        margin-top: 20px;
+        padding: 16px;
+        border: 1px dashed #d6d3d1;
+        border-radius: 8px;
+        background: #fafaf9;
+        text-align: center;
+        color: #78716c;
+      }
+      .preview img,
+      .preview video {
+        max-width: 100%;
+        max-height: 400px;
+        display: block;
+        margin: 0 auto;
+        border-radius: 4px;
+      }
+      .actions {
+        margin-top: 24px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      button {
+        background: #1c1917;
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        padding: 12px 24px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+      button:hover:not(:disabled) {
+        background: #292524;
+      }
+      button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      progress {
+        flex: 1;
+        height: 8px;
+        border-radius: 4px;
+        overflow: hidden;
+      }
+      progress::-webkit-progress-bar {
+        background: #e7e5e4;
+        border-radius: 4px;
+      }
+      progress::-webkit-progress-value {
+        background: #1c1917;
+        border-radius: 4px;
+      }
+      .status {
+        margin-top: 16px;
+        padding: 12px;
+        border-radius: 8px;
+        font-size: 14px;
+        display: none;
+      }
+      .status.show {
+        display: block;
+      }
+      .status.success {
+        background: #dcfce7;
+        color: #166534;
+        border: 1px solid #bbf7d0;
+      }
+      .status.error {
+        background: #fee2e2;
+        color: #991b1b;
+        border: 1px solid #fecaca;
+      }
+      .status.info {
+        background: #dbeafe;
+        color: #1e40af;
+        border: 1px solid #bfdbfe;
+      }
+      .status a {
+        color: inherit;
+        font-weight: 600;
+      }
+      .file-info {
+        margin-top: 8px;
+        font-size: 12px;
+        color: #78716c;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>📷 Cyber Gallery 上传</h1>
+      <form id="upload-form">
+        <label for="title">标题 *</label>
+        <input id="title" type="text" placeholder="输入作品标题" required />
+
+        <label for="date">日期</label>
+        <input id="date" type="date" />
+
+        <label for="desc">描述</label>
+        <textarea id="desc" placeholder="简短描述这个作品"></textarea>
+
+        <label for="file">媒体文件 * (支持图片/GIF/视频)</label>
+        <input id="file" type="file" accept="image/*,video/*" required />
+        <div class="file-info" id="file-info">最大支持 1GB，推荐视频格式：MP4/MOV/WebM</div>
+
+        <div id="preview" class="preview">选择文件后将显示预览</div>
+
+        <div class="actions">
+          <button id="submit-btn" type="submit">上传到图库</button>
+          <progress id="progress" value="0" max="100" style="display: none"></progress>
+        </div>
+        <div id="status" class="status"></div>
+      </form>
+    </div>
+
+    <script>
+      const WORKER_BASE_URL = "https://cyber-gallery-upload.jane-studio.workers.dev";
+      const initUrl = `${WORKER_BASE_URL}/upload/init`;
+      const completeUrl = `${WORKER_BASE_URL}/upload/complete`;
+
+      const form = document.getElementById("upload-form");
+      const fileInput = document.getElementById("file");
+      const preview = document.getElementById("preview");
+      const progress = document.getElementById("progress");
+      const statusEl = document.getElementById("status");
+      const submitBtn = document.getElementById("submit-btn");
+      const dateInput = document.getElementById("date");
+      const fileInfo = document.getElementById("file-info");
+
+      dateInput.value = new Date().toISOString().slice(0, 10);
+
+      fileInput.addEventListener("change", () => {
+        const file = fileInput.files[0];
+        if (!file) {
+          preview.textContent = "选择文件后将显示预览";
+          fileInfo.textContent = "最大支持 1GB，推荐视频格式：MP4/MOV/WebM";
+          return;
+        }
+
+        const sizeMB = (file.size / 1024 / 1024).toFixed(2);
+        fileInfo.textContent = `文件: ${file.name} (${sizeMB} MB)`;
+        renderPreview(file);
+      });
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const file = fileInput.files[0];
+        if (!file) return;
+
+        const title = document.getElementById("title").value.trim();
+        const date = formatDateForSheet(dateInput.value);
+        const desc = document.getElementById("desc").value.trim();
+
+        if (!title) {
+          setStatus("请输入标题", "error");
+          return;
+        }
+
+        setStatus("准备上传...", "info");
+        setUploading(true);
+
+        try {
+          const initRes = await fetch(initUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              filename: file.name,
+              contentType: file.type || "application/octet-stream",
+              size: file.size,
+              title,
+              date,
+              desc,
+            }),
+          });
+
+          if (!initRes.ok) {
+            const error = await initRes.json();
+            throw new Error(error.error || `初始化失败: ${initRes.status}`);
+          }
+
+          const initData = await initRes.json();
+          setStatus(`正在上传文件 (${(file.size / 1024 / 1024).toFixed(2)} MB)...`, "info");
+
+          await uploadToR2(initData.uploadUrl, file);
+
+          setStatus("正在保存到数据库...", "info");
+          const completeRes = await fetch(completeUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              objectKey: initData.objectKey,
+              title,
+              date,
+              desc,
+            }),
+          });
+
+          if (!completeRes.ok) {
+            const error = await completeRes.json();
+            throw new Error(error.error || `保存失败: ${completeRes.status}`);
+          }
+
+          const completeData = await completeRes.json();
+          setStatus(
+            `✅ 上传成功！文件已添加到图库。<br><a href="${completeData.fileUrl}" target="_blank" rel="noopener">查看文件</a>`,
+            "success",
+            true
+          );
+
+          form.reset();
+          preview.textContent = "选择文件后将显示预览";
+          fileInfo.textContent = "最大支持 1GB，推荐视频格式：MP4/MOV/WebM";
+          progress.style.display = "none";
+          progress.value = 0;
+        } catch (error) {
+          setStatus(`❌ ${error.message || "上传失败"}`, "error");
+        } finally {
+          setUploading(false);
+        }
+      });
+
+      function renderPreview(file) {
+        preview.innerHTML = "";
+        const url = URL.createObjectURL(file);
+
+        if (file.type.startsWith("video/")) {
+          const video = document.createElement("video");
+          video.controls = true;
+          video.src = url;
+          video.style.maxHeight = "400px";
+          preview.appendChild(video);
+        } else if (file.type.startsWith("image/")) {
+          const img = document.createElement("img");
+          img.src = url;
+          img.alt = "预览";
+          preview.appendChild(img);
+        } else {
+          preview.textContent = "该文件类型无法预览";
+        }
+      }
+
+      function uploadToR2(uploadUrl, file) {
+        return new Promise((resolve, reject) => {
+          progress.style.display = "block";
+          progress.value = 0;
+
+          const xhr = new XMLHttpRequest();
+          xhr.open("PUT", uploadUrl, true);
+          xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream");
+
+          xhr.upload.onprogress = (event) => {
+            if (event.lengthComputable) {
+              const percent = Math.round((event.loaded / event.total) * 100);
+              progress.value = percent;
+            }
+          };
+
+          xhr.onload = () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              resolve();
+            } else {
+              reject(new Error(`R2 上传失败: ${xhr.status}`));
+            }
+          };
+
+          xhr.onerror = () => reject(new Error("网络错误，上传中断"));
+          xhr.send(file);
+        });
+      }
+
+      function formatDateForSheet(value) {
+        if (!value) return "";
+        return value.replace(/-/g, ".");
+      }
+
+      function setUploading(isUploading) {
+        submitBtn.disabled = isUploading;
+        fileInput.disabled = isUploading;
+      }
+
+      function setStatus(message, type, allowHtml) {
+        statusEl.className = `status ${type || ""} show`;
+        if (allowHtml) {
+          statusEl.innerHTML = message;
+        } else {
+          statusEl.textContent = message;
+        }
+      }
+    </script>
+  </body>
+</html>
